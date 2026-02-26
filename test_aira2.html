@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ระบบสุ่มข้อสอบ อนุบาล 3</title>
+
+<style>
+body{
+    font-family:Arial;
+    background:linear-gradient(to right,#ffecd2,#fcb69f);
+    text-align:center;
+}
+h1{color:#333;}
+.container{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:20px;
+    padding:20px;
+}
+.card{
+    background:#fff;
+    padding:15px;
+    border-radius:15px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.2);
+}
+button{
+    padding:8px 15px;
+    margin:5px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    background:#ffe082;
+}
+button:hover{background:#ffca28;}
+.correct{background:#81c784 !important;}
+.wrong{background:#e57373 !important;}
+#result{
+    font-size:22px;
+    margin:20px;
+    font-weight:bold;
+}
+.start-btn{
+    background:#4fc3f7;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+
+<h1>ระบบสุ่มข้อสอบ อนุบาล 3</h1>
+
+<button class="start-btn" onclick="startExam()">เริ่มสอบ</button>
+
+<div class="container" id="quiz"></div>
+
+<button onclick="checkAnswers()">ตรวจคำตอบ</button>
+<div id="result"></div>
+
+<script>
+const questionBank = {
+
+thai:[
+{q:"ข้อใดเป็นพยัญชนะ?",a:"ก",o:["ก","า","เ"]},
+{q:"เลขไทย ๗ ตรงกับข้อใด?",a:"7",o:["5","7","9"]},
+{q:"คำใดอยู่ในมาตรา ก กา?",a:"กา",o:["กา","กิน","เกม"]},
+{q:"คำใดอยู่ในมาตรา กง?",a:"ปลิง",o:["ปลา","ปลิง","กิน"]},
+{q:"คำใดอยู่ในมาตรา กม?",a:"ลม",o:["ลม","ฝน","กิน"]}
+],
+
+math:[
+{q:"🍎🍎🍎 มีกี่ลูก?",a:"3",o:["2","3","4"]},
+{q:"12 + 4 = ?",a:"16",o:["15","16","17"]},
+{q:"10 - 3 = ?",a:"7",o:["6","7","8"]},
+{q:"เรียงจากน้อยไปมาก 4,1,6",a:"1-4-6",o:["6-4-1","1-4-6","4-6-1"]}
+],
+
+english:[
+{q:"ตัวอักษรถัดจาก B คือ?",a:"C",o:["A","C","D"]},
+{q:"Apple สีอะไร?",a:"Red",o:["Blue","Green","Red"]},
+{q:"ข้อใดคือ Dog?",a:"🐶",o:["🐱","🐰","🐶"]},
+{q:"mother คือ?",a:"แม่",o:["แม่","พ่อ","พี่"]}
+]
+
+};
+
+let selectedQuestions=[];
+let answers={};
+
+function shuffle(arr){
+    return arr.sort(()=>Math.random()-0.5);
+}
+
+function startExam(){
+    answers={};
+    selectedQuestions=[];
+    document.getElementById("result").innerHTML="";
+    const quiz=document.getElementById("quiz");
+    quiz.innerHTML="";
+
+    const thaiQ=shuffle([...questionBank.thai]).slice(0,3);
+    const mathQ=shuffle([...questionBank.math]).slice(0,3);
+    const engQ=shuffle([...questionBank.english]).slice(0,3);
+
+    selectedQuestions=[...thaiQ,...mathQ,...engQ];
+
+    shuffle(selectedQuestions);
+
+    selectedQuestions.forEach((item,index)=>{
+        const card=document.createElement("div");
+        card.className="card";
+
+        const title=document.createElement("h3");
+        title.innerText=(index+1)+") "+item.q;
+        card.appendChild(title);
+
+        const shuffledOptions=shuffle([...item.o]);
+
+        shuffledOptions.forEach(opt=>{
+            const btn=document.createElement("button");
+            btn.innerText=opt;
+            btn.onclick=()=>{
+                answers[index]=opt;
+                const buttons=card.querySelectorAll("button");
+                buttons.forEach(b=>b.style.background="#ffe082");
+                btn.style.background="#90caf9";
+            };
+            card.appendChild(btn);
+        });
+
+        quiz.appendChild(card);
+    });
+}
+
+function checkAnswers(){
+    let score=0;
+
+    selectedQuestions.forEach((item,index)=>{
+        const card=document.getElementsByClassName("card")[index];
+        const buttons=card.querySelectorAll("button");
+
+        buttons.forEach(btn=>{
+            if(btn.innerText===item.a){
+                btn.classList.add("correct");
+            }
+            if(answers[index]===btn.innerText && answers[index]!==item.a){
+                btn.classList.add("wrong");
+            }
+        });
+
+        if(answers[index]===item.a){
+            score++;
+        }
+    });
+
+    document.getElementById("result").innerHTML=
+    "คะแนนที่ได้: "+score+" / "+selectedQuestions.length;
+}
+</script>
+
+</body>
+</html>
