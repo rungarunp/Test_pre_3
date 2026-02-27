@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bright Star School</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+  font-family: Arial, sans-serif;
+  margin:0;
+  background:linear-gradient(#f4f8ff,#e0ecff);
+}
+header{
+  background:#0b3d91;
+  color:white;
+  padding:14px;
+  text-align:center;
+  font-size:20px;
+}
+.container{ padding:15px; text-align:center; }
+
+.menu button{
+  background:#1e5fd8;
+  color:white;
+  border:none;
+  padding:8px 14px;
+  margin:4px;
+  border-radius:18px;
+  cursor:pointer;
+}
+
+.board{
+  display:flex;
+  justify-content:center;
+  margin-top:20px;
+  position:relative;
+  touch-action:none;
+}
+
+.column{ margin:0 30px; z-index:2; }
+
+.item{
+  background:white;
+  padding:10px 18px;
+  margin:14px;
+  border-radius:14px;
+  box-shadow:0 3px 6px rgba(0,0,0,0.1);
+  font-size:18px;
+  user-select:none;
+}
+
+canvas{
+  position:absolute;
+  top:0;
+  left:0;
+  z-index:1;
+  pointer-events:none;
+}
+
+.mascot{
+  margin-top:20px;
+  font-size:50px;
+  transition:0.3s;
+}
+.jump{ transform:scale(1.3) rotate(10deg); }
+
+.controls{ margin-top:10px; }
+.controls button{
+  padding:6px 14px;
+  margin:4px;
+  border:none;
+  border-radius:14px;
+  background:#0b3d91;
+  color:white;
+}
+</style>
+</head>
+<body>
+
+<header>🧸 Bright Star Private School</header>
+
+<div class="container">
+
+<div class="menu">
+  <button onclick="changeCategory('classroom')">📘 Classroom</button>
+  <button onclick="changeCategory('colors')">🎨 Colors</button>
+  <button onclick="changeCategory('animals')">🐶 Animals</button>
+  <button onclick="changeCategory('numbers')">🔢 Numbers</button>
+</div>
+
+<div class="board" id="board">
+  <canvas id="canvas"></canvas>
+  <div class="column" id="left"></div>
+  <div class="column" id="right"></div>
+</div>
+
+<div class="mascot" id="mascot">🧸</div>
+
+<div class="controls">
+  <button onclick="checkAnswer()">✅ Check</button>
+  <button onclick="resetBoard()">🔄 Reset</button>
+  <button onclick="randomize()">🎲 Random</button>
+</div>
+
+</div>
+
+<script>
+const data = {
+classroom: [
+  {left:"pencil", right:"✏️"},
+  {left:"book", right:"📚"},
+  {left:"bag", right:"🎒"},
+  {left:"ruler", right:"📏"},
+  {left:"eraser", right:"🩹"}
+],
+colors: [
+  {left:"Red", right:"🔴"},
+  {left:"Blue", right:"🔵"},
+  {left:"Green", right:"🟢"},
+  {left:"Yellow", right:"🟡"}
+],
+animals: [
+  {left:"Dog", right:"🐶"},
+  {left:"Cat", right:"🐱"},
+  {left:"Monkey", right:"🐵"},
+  {left:"Tiger", right:"🐯"}
+],
+numbers: [
+  {left:"One", right:"1"},
+  {left:"Two", right:"2"},
+  {left:"Three", right:"3"},
+  {left:"Four", right:"4"}
+]
+};
+
+let currentCategory = "classroom";
+let pairs = [];
+let connections = [];
+let dragging = null;
+
+const board = document.getElementById("board");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const leftDiv = document.getElementById("left");
+const rightDiv = document.getElementById("right");
+
+function resizeCanvas(){
+  canvas.width = board.offsetWidth;
+  canvas.height = board.offsetHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+
+function shuffle(arr){
+  return arr.sort(()=>Math.random()-0.5);
+}
+
+function randomize(){
+  loadCategory(currentCategory);
+}
+
+function changeCategory(cat){
+  currentCategory = cat;
+  resetBoard();
+  loadCategory(cat);
+}
+
+function loadCategory(cat){
+  const all = data[cat];
+  pairs = shuffle([...all]).slice(0,4); // สุ่ม 4 ข้อ
+  render();
+}
+
+function render(){
+  leftDiv.innerHTML="";
+  rightDiv.innerHTML="";
+  connections=[];
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  let leftItems = shuffle(pairs.map(p=>p.left));
+  let rightItems = shuffle(pairs.map(p=>p.right));
+
+  leftItems.forEach(text=>{
+    let div=document.createElement("div");
+    div.className="item";
+    div.innerText=text;
+    div.dataset.side="left";
+    div.dataset.value=text;
+    leftDiv.appendChild(div);
+  });
+
+  rightItems.forEach(text=>{
+    let div=document.createElement("div");
+    div.className="item";
+    div.innerText=text;
+    div.dataset.side="right";
+    div.dataset.value=text;
+    rightDiv.appendChild(div);
+  });
+}
+
+function drawLine(x1,y1,x2,y2,color="black"){
+  ctx.strokeStyle=color;
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
+}
+
+function getPos(e){
+  const rect=board.getBoundingClientRect();
+  if(e.touches){
+    return {
+      x:e.touches[0].clientX-rect.left,
+      y:e.touches[0].clientY-rect.top
+    };
+  }
+  return { x:e.clientX-rect.left, y:e.clientY-rect.top };
+}
+
+function start(e){
+  if(e.target.classList.contains("item")){
+    const rect=e.target.getBoundingClientRect();
+    const boardRect=board.getBoundingClientRect();
+    dragging={
+      text:e.target.dataset.value,
+      side:e.target.dataset.side,
+      x:rect.left-boardRect.left+rect.width/2,
+      y:rect.top-boardRect.top+rect.height/2
+    };
+  }
+}
+
+function move(e){
+  if(!dragging) return;
+  e.preventDefault();
+  const pos=getPos(e);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  redraw();
+  drawLine(dragging.x,dragging.y,pos.x,pos.y);
+}
+
+function end(e){
+  if(!dragging) return;
+
+  if(e.target.classList.contains("item") &&
+     e.target.dataset.side!==dragging.side){
+
+    const rect=e.target.getBoundingClientRect();
+    const boardRect=board.getBoundingClientRect();
+
+    connections.push({
+      from:dragging.text,
+      to:e.target.dataset.value,
+      x1:dragging.x,
+      y1:dragging.y,
+      x2:rect.left-boardRect.left+rect.width/2,
+      y2:rect.top-boardRect.top+rect.height/2
+    });
+  }
+
+  dragging=null;
+  redraw();
+}
+
+function redraw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  connections.forEach(c=>{
+    drawLine(c.x1,c.y1,c.x2,c.y2,c.color||"black");
+  });
+}
+
+function checkAnswer(){
+  let correctAll=true;
+
+  connections.forEach(c=>{
+    let match=pairs.find(p=>p.left===c.from && p.right===c.to);
+    c.color = match?"green":"red";
+    if(!match) correctAll=false;
+  });
+
+  redraw();
+
+  const mascot=document.getElementById("mascot");
+  if(correctAll && connections.length===pairs.length){
+    mascot.innerText="⭐";
+    mascot.classList.add("jump");
+    speechSynthesis.speak(new SpeechSynthesisUtterance("Good job!"));
+  }else{
+    mascot.innerText="🤔";
+    mascot.classList.remove("jump");
+  }
+}
+
+function resetBoard(){
+  connections=[];
+  dragging=null;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  document.getElementById("mascot").innerText="🧸";
+  document.getElementById("mascot").classList.remove("jump");
+}
+
+board.addEventListener("pointerdown",start);
+board.addEventListener("pointermove",move);
+board.addEventListener("pointerup",end);
+
+board.addEventListener("touchstart",start);
+board.addEventListener("touchmove",move,{passive:false});
+board.addEventListener("touchend",end);
+
+board.addEventListener("mousedown",start);
+board.addEventListener("mousemove",move);
+board.addEventListener("mouseup",end);
+
+window.onload=function(){
+  resizeCanvas();
+  loadCategory(currentCategory);
+};
+</script>
+
+</body>
+</html>

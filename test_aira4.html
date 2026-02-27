@@ -203,6 +203,8 @@ const categories = {
 let svg=document.getElementById("svgLines");
 let isDrawing=false;
 let currentLine=null;
+let startElement = null;
+
 
 const select=document.getElementById("categorySelect");
 select.addEventListener("change", generateGame);
@@ -216,14 +218,12 @@ Object.keys(categories).forEach(cat=>{
 function generateGame(){
 
   const gameArea = document.getElementById("gameArea");
-
-  // ทำ fade out
   gameArea.classList.remove("fade-in");
   gameArea.classList.add("fade-out");
 
   setTimeout(()=>{
 
-    clearLines(); // ล้างเส้นอัตโนมัติ
+    clearLines();
 
     const left=document.getElementById("leftCol");
     const right=document.getElementById("rightCol");
@@ -231,12 +231,22 @@ function generateGame(){
     right.innerHTML="";
 
     const selected=categories[select.value];
-    const shuffled=[...selected].sort(()=>Math.random()-0.5);
 
-    selected.forEach(item=>{
+    // ใส่ id ให้แต่ละข้อ
+    const withId = selected.map((item,index)=>({
+      id:index,
+      q:item.q,
+      a:item.a
+    }));
+
+    const shuffled=[...withId].sort(()=>Math.random()-0.5);
+
+    withId.forEach(item=>{
       const div=document.createElement("div");
       div.className="item";
       div.innerText=item.q;
+      div.dataset.id=item.id;
+      div.dataset.side="left";
       addEvents(div);
       left.appendChild(div);
     });
@@ -245,11 +255,12 @@ function generateGame(){
       const div=document.createElement("div");
       div.className="item";
       div.innerText=item.a;
+      div.dataset.id=item.id;
+      div.dataset.side="right";
       addEvents(div);
       right.appendChild(div);
     });
 
-    // fade in กลับมา
     gameArea.classList.remove("fade-out");
     gameArea.classList.add("fade-in");
 
@@ -260,48 +271,80 @@ function addEvents(el){
   el.addEventListener("mousedown",startDraw);
   el.addEventListener("touchstart",startDraw);
 }
-
 function startDraw(e){
   e.preventDefault();
-  isDrawing=true;
 
-  const rect=e.target.getBoundingClientRect();
-  const cRect=document.getElementById("gameArea").getBoundingClientRect();
+  if(e.target.dataset.side !== "left") return;
 
-  const x=rect.left+rect.width/2-cRect.left;
-  const y=rect.top+rect.height/2-cRect.top;
+  startElement = e.target;
+  isDrawing = true;
 
-  currentLine=document.createElementNS("http://www.w3.org/2000/svg","line");
+  const rect = startElement.getBoundingClientRect();
+  const cRect = document.getElementById("gameArea").getBoundingClientRect();
+
+  const x = rect.left + rect.width/2 - cRect.left;
+  const y = rect.top + rect.height/2 - cRect.top;
+
+  currentLine = document.createElementNS("http://www.w3.org/2000/svg","line");
   currentLine.setAttribute("x1",x);
   currentLine.setAttribute("y1",y);
   currentLine.setAttribute("x2",x);
   currentLine.setAttribute("y2",y);
-  currentLine.setAttribute("stroke","red");
+  currentLine.setAttribute("stroke","gray");
   currentLine.setAttribute("stroke-width","4");
   currentLine.style.pointerEvents="auto";
 
-  currentLine.addEventListener("click",()=>svg.removeChild(currentLine));
+  currentLine.addEventListener("click",()=>{
+    svg.removeChild(currentLine);
+  });
 
   svg.appendChild(currentLine);
-
-  document.addEventListener("mousemove",moveDraw);
-  document.addEventListener("mouseup",stopDraw);
-  document.addEventListener("touchmove",moveDraw);
-  document.addEventListener("touchend",stopDraw);
 }
+
+document.addEventListener("mousemove", moveDraw);
+document.addEventListener("touchmove", moveDraw, { passive:false });
 
 function moveDraw(e){
-  if(!isDrawing) return;
-  const cRect=document.getElementById("gameArea").getBoundingClientRect();
-  let clientX=e.touches?e.touches[0].clientX:e.clientX;
-  let clientY=e.touches?e.touches[0].clientY:e.clientY;
+  if(!isDrawing || !currentLine) return;
 
-  currentLine.setAttribute("x2",clientX-cRect.left);
-  currentLine.setAttribute("y2",clientY-cRect.top);
+  e.preventDefault();
+
+  const cRect = document.getElementById("gameArea").getBoundingClientRect();
+
+  let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  currentLine.setAttribute("x2", clientX - cRect.left);
+  currentLine.setAttribute("y2", clientY - cRect.top);
 }
+document.addEventListener("mouseup", stopDraw);
+document.addEventListener("touchend", stopDraw);
 
-function stopDraw(){
-  isDrawing=false;
+function stopDraw(e){
+  if(!isDrawing || !currentLine) return;
+
+  isDrawing = false;
+
+  let clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+  let clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+  const endElement = document.elementFromPoint(clientX, clientY);
+
+  if(
+    endElement &&
+    endElement.classList.contains("item") &&
+    endElement.dataset.side === "right"
+  ){
+      if(startElement.dataset.id === endElement.dataset.id){
+        currentLine.setAttribute("stroke","green");
+      }else{
+        currentLine.setAttribute("stroke","red");
+      }
+  }else{
+      svg.removeChild(currentLine);
+  }
+
+  currentLine = null;
 }
 
 function clearLines(){
