@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ข้อสอบโยงเส้น อนุบาล 3</title>
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#fef9c3;
+  text-align:center;
+}
+
+h2{ color:#d97706; }
+
+.container{
+  display:flex;
+  justify-content:space-between;
+  max-width:950px;
+  margin:auto;
+  position:relative;
+}
+
+.column{ width:40%; }
+
+.item{
+  background:white;
+  padding:12px;
+  margin:18px;
+  border-radius:12px;
+  box-shadow:0 4px 6px rgba(0,0,0,0.1);
+  cursor:pointer;
+  font-size:18px;
+  font-weight:bold;
+}
+
+.item:hover{ background:#fde68a; }
+
+svg{
+  position:absolute;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+
+button, select{
+  margin:10px;
+  padding:10px 15px;
+  border-radius:8px;
+  border:none;
+  font-size:16px;
+  cursor:pointer;
+}
+
+button{
+  background:#f59e0b;
+  color:white;
+}
+
+select{
+  background:#fbbf24;
+}
+.fade-out {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.fade-in {
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+</style>
+</head>
+<body>
+
+<h2>🎓 ข้อสอบโยงเส้น อนุบาล 3</h2>
+
+<select id="categorySelect"></select>
+<button onclick="generateGame()">🔄 สุ่มข้อสอบ</button>
+<button onclick="clearLines()">🧹 ล้างเส้น</button>
+
+<div class="container" id="gameArea">
+  <div class="column" id="leftCol"></div>
+  <div class="column" id="rightCol"></div>
+  <svg id="svgLines"></svg>
+</div>
+
+<script>
+const categories = {
+
+"ภาษาไทย - พยัญชนะ":[
+{q:"ก",a:"ไก่"},
+{q:"ข",a:"ไข่"},
+{q:"จ",a:"จาน"},
+{q:"ด",a:"เด็ก"},
+{q:"บ",a:"ใบไม้"}
+],
+
+"ภาษาไทย - ตัวเลขไทย":[
+{q:"๑",a:"1"},
+{q:"๒",a:"2"},
+{q:"๓",a:"3"},
+{q:"๔",a:"4"},
+{q:"๕",a:"5"}
+],
+
+"ภาษาไทย - มาตรา ก กา":[
+{q:"มา",a:"ไม่มีตัวสะกด"},
+{q:"ดู",a:"ไม่มีตัวสะกด"},
+{q:"ตา",a:"ไม่มีตัวสะกด"},
+{q:"ปลา",a:"ไม่มีตัวสะกด"}
+],
+
+"ภาษาไทย - มาตรา กง":[
+{q:"กง",a:"ง"},
+{q:"ชง",a:"ง"},
+{q:"ปิงปอง",a:"ง"},
+{q:"ลง",a:"ง"}
+],
+
+"ภาษาไทย - มาตรา กน":[
+{q:"บ้าน",a:"น"},
+{q:"กิน",a:"น"},
+{q:"ฝน",a:"น"},
+{q:"เดิน",a:"น"}
+],
+
+"ภาษาไทย - มาตรา กม":[
+{q:"ลม",a:"ม"},
+{q:"กลม",a:"ม"},
+{q:"ขนม",a:"ม"},
+{q:"ยิ้ม",a:"ม"}
+],
+
+"คณิต - นับจำนวน":[
+{q:"🍎🍎🍎",a:"3"},
+{q:"🐶🐶",a:"2"},
+{q:"⭐️⭐️⭐️⭐️",a:"4"},
+{q:"⚽️",a:"1"}
+],
+
+"คณิต - บวกเลข":[
+{q:"2 + 3",a:"5"},
+{q:"4 + 5",a:"9"},
+{q:"6 + 2",a:"8"},
+{q:"7 + 1",a:"8"}
+],
+
+"คณิต - ลบเลข":[
+{q:"5 - 2",a:"3"},
+{q:"9 - 4",a:"5"},
+{q:"8 - 3",a:"5"},
+{q:"7 - 6",a:"1"}
+],
+
+"English - A-Z":[
+{q:"A",a:"Apple"},
+{q:"B",a:"Ball"},
+{q:"C",a:"Cat"},
+{q:"D",a:"Dog"}
+],
+
+"English - Colors":[
+{q:"Red",a:"สีแดง"},
+{q:"Blue",a:"สีน้ำเงิน"},
+{q:"Green",a:"สีเขียว"},
+{q:"Yellow",a:"สีเหลือง"}
+],
+
+"English - Animals":[
+{q:"Dog",a:"สุนัข"},
+{q:"Cat",a:"แมว"},
+{q:"Bird",a:"นก"},
+{q:"Fish",a:"ปลา"}
+],
+
+"English - Fruits":[
+{q:"Apple",a:"แอปเปิล"},
+{q:"Banana",a:"กล้วย"},
+{q:"Orange",a:"ส้ม"},
+{q:"Mango",a:"มะม่วง"}
+],
+
+"English - Numbers 1-10":[
+{q:"One",a:"1"},
+{q:"Two",a:"2"},
+{q:"Three",a:"3"},
+{q:"Four",a:"4"}
+],
+
+"English - Family":[
+{q:"Father",a:"พ่อ"},
+{q:"Mother",a:"แม่"},
+{q:"Brother",a:"พี่ชาย"},
+{q:"Sister",a:"พี่สาว"}
+]
+
+};
+
+let svg=document.getElementById("svgLines");
+let isDrawing=false;
+let currentLine=null;
+
+const select=document.getElementById("categorySelect");
+select.addEventListener("change", generateGame);
+Object.keys(categories).forEach(cat=>{
+  let option=document.createElement("option");
+  option.value=cat;
+  option.textContent=cat;
+  select.appendChild(option);
+});
+
+function generateGame(){
+
+  const gameArea = document.getElementById("gameArea");
+
+  // ทำ fade out
+  gameArea.classList.remove("fade-in");
+  gameArea.classList.add("fade-out");
+
+  setTimeout(()=>{
+
+    clearLines(); // ล้างเส้นอัตโนมัติ
+
+    const left=document.getElementById("leftCol");
+    const right=document.getElementById("rightCol");
+    left.innerHTML="";
+    right.innerHTML="";
+
+    const selected=categories[select.value];
+    const shuffled=[...selected].sort(()=>Math.random()-0.5);
+
+    selected.forEach(item=>{
+      const div=document.createElement("div");
+      div.className="item";
+      div.innerText=item.q;
+      addEvents(div);
+      left.appendChild(div);
+    });
+
+    shuffled.forEach(item=>{
+      const div=document.createElement("div");
+      div.className="item";
+      div.innerText=item.a;
+      addEvents(div);
+      right.appendChild(div);
+    });
+
+    // fade in กลับมา
+    gameArea.classList.remove("fade-out");
+    gameArea.classList.add("fade-in");
+
+  },250);
+}
+
+function addEvents(el){
+  el.addEventListener("mousedown",startDraw);
+  el.addEventListener("touchstart",startDraw);
+}
+
+function startDraw(e){
+  e.preventDefault();
+  isDrawing=true;
+
+  const rect=e.target.getBoundingClientRect();
+  const cRect=document.getElementById("gameArea").getBoundingClientRect();
+
+  const x=rect.left+rect.width/2-cRect.left;
+  const y=rect.top+rect.height/2-cRect.top;
+
+  currentLine=document.createElementNS("http://www.w3.org/2000/svg","line");
+  currentLine.setAttribute("x1",x);
+  currentLine.setAttribute("y1",y);
+  currentLine.setAttribute("x2",x);
+  currentLine.setAttribute("y2",y);
+  currentLine.setAttribute("stroke","red");
+  currentLine.setAttribute("stroke-width","4");
+  currentLine.style.pointerEvents="auto";
+
+  currentLine.addEventListener("click",()=>svg.removeChild(currentLine));
+
+  svg.appendChild(currentLine);
+
+  document.addEventListener("mousemove",moveDraw);
+  document.addEventListener("mouseup",stopDraw);
+  document.addEventListener("touchmove",moveDraw);
+  document.addEventListener("touchend",stopDraw);
+}
+
+function moveDraw(e){
+  if(!isDrawing) return;
+  const cRect=document.getElementById("gameArea").getBoundingClientRect();
+  let clientX=e.touches?e.touches[0].clientX:e.clientX;
+  let clientY=e.touches?e.touches[0].clientY:e.clientY;
+
+  currentLine.setAttribute("x2",clientX-cRect.left);
+  currentLine.setAttribute("y2",clientY-cRect.top);
+}
+
+function stopDraw(){
+  isDrawing=false;
+}
+
+function clearLines(){
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+}
+
+generateGame();
+</script>
+
+</body>
+</html>
