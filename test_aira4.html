@@ -1,357 +1,298 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ข้อสอบโยงเส้น อนุบาล 3</title>
+<title>Bright Star School</title>
 
 <style>
 body{
-  font-family: Arial, sans-serif;
-  background:#fef9c3;
+  font-family: Arial;
+  margin:0;
+  background:linear-gradient(#f4f8ff,#e0ecff);
+}
+
+header{
+  background:#0b3d91;
+  color:white;
+  padding:14px;
+  text-align:center;
+  font-size:20px;
+}
+
+.container{
+  padding:15px;
   text-align:center;
 }
 
-h2{ color:#d97706; }
-
-.container{
-  display:flex;
-  justify-content:space-between;
-  max-width:950px;
-  margin:auto;
-  position:relative;
+.menu button{
+  background:#1e5fd8;
+  color:white;
+  border:none;
+  padding:8px 14px;
+  margin:4px;
+  border-radius:18px;
 }
 
-.column{ width:40%; }
+.board{
+  display:flex;
+  justify-content:center;
+  margin-top:20px;
+  position:relative;
+  touch-action:none;
+}
+
+.column{
+  margin:0 30px;
+  z-index:2;
+}
 
 .item{
   background:white;
-  padding:12px;
-  margin:18px;
-  border-radius:12px;
-  box-shadow:0 4px 6px rgba(0,0,0,0.1);
-  cursor:pointer;
+  padding:10px 18px;
+  margin:14px;
+  border-radius:14px;
+  box-shadow:0 3px 6px rgba(0,0,0,0.1);
   font-size:18px;
-  font-weight:bold;
+  user-select:none;
 }
 
-.item:hover{ background:#fde68a; }
-
-svg{
+canvas{
   position:absolute;
-  left:0;
   top:0;
-  width:100%;
-  height:100%;
+  left:0;
+  z-index:1;
   pointer-events:none;
 }
 
-button, select{
-  margin:10px;
-  padding:10px 15px;
-  border-radius:8px;
-  border:none;
-  font-size:16px;
-  cursor:pointer;
+.mascot{
+  margin-top:20px;
+  font-size:50px;
+  transition:0.3s;
 }
-
-button{
-  background:#f59e0b;
-  color:white;
-}
-
-select{
-  background:#fbbf24;
-}
-.fade-out {
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.fade-in {
-  opacity: 1;
-  transition: opacity 0.25s ease;
-}
+.jump{ transform:scale(1.3) rotate(10deg); }
 </style>
 </head>
+
 <body>
 
-<h2>🎓 ข้อสอบโยงเส้น อนุบาล 3</h2>
+<header>🧸 Bright Star Private School</header>
 
-<select id="categorySelect"></select>
-<button onclick="generateGame()">🔄 สุ่มข้อสอบ</button>
-<button onclick="clearLines()">🧹 ล้างเส้น</button>
+<div class="container">
 
-<div class="container" id="gameArea">
-  <div class="column" id="leftCol"></div>
-  <div class="column" id="rightCol"></div>
-  <svg id="svgLines"></svg>
+<div class="menu">
+  <button onclick="changeCategory('classroom')">📘 Classroom</button>
+  <button onclick="changeCategory('animals')">🐶 Animals</button>
+</div>
+
+<div class="board" id="board">
+  <canvas id="canvas"></canvas>
+  <div class="column" id="left"></div>
+  <div class="column" id="right"></div>
+</div>
+
+<div class="mascot" id="mascot">🧸</div>
+<br>
+<button onclick="checkAnswer()">✅ Check</button>
+<button onclick="resetBoard()">🔄 Reset</button>
+
 </div>
 
 <script>
-const categories = {
-
-"ภาษาไทย - พยัญชนะ":[
-{q:"ก",a:"ไก่"},
-{q:"ข",a:"ไข่"},
-{q:"จ",a:"จาน"},
-{q:"ด",a:"เด็ก"},
-{q:"บ",a:"ใบไม้"}
+const data = {
+classroom:[
+  {left:"pencil",right:"✏️"},
+  {left:"book",right:"📚"},
+  {left:"bag",right:"🎒"},
+  {left:"ruler",right:"📏"}
 ],
-
-"ภาษาไทย - ตัวเลขไทย":[
-{q:"๑",a:"1"},
-{q:"๒",a:"2"},
-{q:"๓",a:"3"},
-{q:"๔",a:"4"},
-{q:"๕",a:"5"}
-],
-
-"ภาษาไทย - มาตรา ก กา":[
-{q:"มา",a:"ไม่มีตัวสะกด"},
-{q:"ดู",a:"ไม่มีตัวสะกด"},
-{q:"ตา",a:"ไม่มีตัวสะกด"},
-{q:"ปลา",a:"ไม่มีตัวสะกด"}
-],
-
-"ภาษาไทย - มาตรา กง":[
-{q:"กง",a:"ง"},
-{q:"ชง",a:"ง"},
-{q:"ปิงปอง",a:"ง"},
-{q:"ลง",a:"ง"}
-],
-
-"ภาษาไทย - มาตรา กน":[
-{q:"บ้าน",a:"น"},
-{q:"กิน",a:"น"},
-{q:"ฝน",a:"น"},
-{q:"เดิน",a:"น"}
-],
-
-"ภาษาไทย - มาตรา กม":[
-{q:"ลม",a:"ม"},
-{q:"กลม",a:"ม"},
-{q:"ขนม",a:"ม"},
-{q:"ยิ้ม",a:"ม"}
-],
-
-"คณิต - นับจำนวน":[
-{q:"🍎🍎🍎",a:"3"},
-{q:"🐶🐶",a:"2"},
-{q:"⭐️⭐️⭐️⭐️",a:"4"},
-{q:"⚽️",a:"1"}
-],
-
-"คณิต - บวกเลข":[
-{q:"2 + 3",a:"5"},
-{q:"4 + 5",a:"9"},
-{q:"6 + 2",a:"8"},
-{q:"7 + 1",a:"8"}
-],
-
-"คณิต - ลบเลข":[
-{q:"5 - 2",a:"3"},
-{q:"9 - 4",a:"5"},
-{q:"8 - 3",a:"5"},
-{q:"7 - 6",a:"1"}
-],
-
-"English - A-Z":[
-{q:"A",a:"Apple"},
-{q:"B",a:"Ball"},
-{q:"C",a:"Cat"},
-{q:"D",a:"Dog"}
-],
-
-"English - Colors":[
-{q:"Red",a:"สีแดง"},
-{q:"Blue",a:"สีน้ำเงิน"},
-{q:"Green",a:"สีเขียว"},
-{q:"Yellow",a:"สีเหลือง"}
-],
-
-"English - Animals":[
-{q:"Dog",a:"สุนัข"},
-{q:"Cat",a:"แมว"},
-{q:"Bird",a:"นก"},
-{q:"Fish",a:"ปลา"}
-],
-
-"English - Fruits":[
-{q:"Apple",a:"แอปเปิล"},
-{q:"Banana",a:"กล้วย"},
-{q:"Orange",a:"ส้ม"},
-{q:"Mango",a:"มะม่วง"}
-],
-
-"English - Numbers 1-10":[
-{q:"One",a:"1"},
-{q:"Two",a:"2"},
-{q:"Three",a:"3"},
-{q:"Four",a:"4"}
-],
-
-"English - Family":[
-{q:"Father",a:"พ่อ"},
-{q:"Mother",a:"แม่"},
-{q:"Brother",a:"พี่ชาย"},
-{q:"Sister",a:"พี่สาว"}
+animals:[
+  {left:"Dog",right:"🐶"},
+  {left:"Cat",right:"🐱"},
+  {left:"Monkey",right:"🐵"},
+  {left:"Tiger",right:"🐯"}
 ]
-
 };
 
-let svg=document.getElementById("svgLines");
-let isDrawing=false;
-let currentLine=null;
-let startElement = null;
+let currentCategory="classroom";
+let pairs=[];
+let connections=[];
+let dragging=null;
 
+const board=document.getElementById("board");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const leftDiv=document.getElementById("left");
+const rightDiv=document.getElementById("right");
 
-const select=document.getElementById("categorySelect");
-select.addEventListener("change", generateGame);
-Object.keys(categories).forEach(cat=>{
-  let option=document.createElement("option");
-  option.value=cat;
-  option.textContent=cat;
-  select.appendChild(option);
-});
+function resizeCanvas(){
+  canvas.width=board.offsetWidth;
+  canvas.height=board.offsetHeight;
+}
+window.addEventListener("resize",resizeCanvas);
 
-function generateGame(){
-
-  const gameArea = document.getElementById("gameArea");
-  gameArea.classList.remove("fade-in");
-  gameArea.classList.add("fade-out");
-
-  setTimeout(()=>{
-
-    clearLines();
-
-    const left=document.getElementById("leftCol");
-    const right=document.getElementById("rightCol");
-    left.innerHTML="";
-    right.innerHTML="";
-
-    const selected=categories[select.value];
-
-    // ใส่ id ให้แต่ละข้อ
-    const withId = selected.map((item,index)=>({
-      id:index,
-      q:item.q,
-      a:item.a
-    }));
-
-    const shuffled=[...withId].sort(()=>Math.random()-0.5);
-
-    withId.forEach(item=>{
-      const div=document.createElement("div");
-      div.className="item";
-      div.innerText=item.q;
-      div.dataset.id=item.id;
-      div.dataset.side="left";
-      addEvents(div);
-      left.appendChild(div);
-    });
-
-    shuffled.forEach(item=>{
-      const div=document.createElement("div");
-      div.className="item";
-      div.innerText=item.a;
-      div.dataset.id=item.id;
-      div.dataset.side="right";
-      addEvents(div);
-      right.appendChild(div);
-    });
-
-    gameArea.classList.remove("fade-out");
-    gameArea.classList.add("fade-in");
-
-  },250);
+function shuffle(arr){
+  return arr.sort(()=>Math.random()-0.5);
 }
 
-function addEvents(el){
-  el.addEventListener("mousedown",startDraw);
-  el.addEventListener("touchstart",startDraw);
+function changeCategory(cat){
+  currentCategory=cat;
+  resetBoard();
+  loadCategory();
 }
-function startDraw(e){
-  e.preventDefault();
 
-  if(e.target.dataset.side !== "left") return;
+function loadCategory(){
+  pairs=shuffle([...data[currentCategory]]);
+  render();
+}
 
-  startElement = e.target;
-  isDrawing = true;
+function render(){
+  leftDiv.innerHTML="";
+  rightDiv.innerHTML="";
+  connections=[];
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  const rect = startElement.getBoundingClientRect();
-  const cRect = document.getElementById("gameArea").getBoundingClientRect();
+  let leftItems=shuffle(pairs.map(p=>p.left));
+  let rightItems=shuffle(pairs.map(p=>p.right));
 
-  const x = rect.left + rect.width/2 - cRect.left;
-  const y = rect.top + rect.height/2 - cRect.top;
-
-  currentLine = document.createElementNS("http://www.w3.org/2000/svg","line");
-  currentLine.setAttribute("x1",x);
-  currentLine.setAttribute("y1",y);
-  currentLine.setAttribute("x2",x);
-  currentLine.setAttribute("y2",y);
-  currentLine.setAttribute("stroke","gray");
-  currentLine.setAttribute("stroke-width","4");
-  currentLine.style.pointerEvents="auto";
-
-  currentLine.addEventListener("click",()=>{
-    svg.removeChild(currentLine);
+  leftItems.forEach(text=>{
+    let d=document.createElement("div");
+    d.className="item";
+    d.innerText=text;
+    d.dataset.side="left";
+    d.dataset.value=text;
+    leftDiv.appendChild(d);
   });
 
-  svg.appendChild(currentLine);
+  rightItems.forEach(text=>{
+    let d=document.createElement("div");
+    d.className="item";
+    d.innerText=text;
+    d.dataset.side="right";
+    d.dataset.value=text;
+    rightDiv.appendChild(d);
+  });
 }
 
-document.addEventListener("mousemove", moveDraw);
-document.addEventListener("touchmove", moveDraw, { passive:false });
+function drawLine(x1,y1,x2,y2,color="black"){
+  ctx.strokeStyle=color;
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
+}
 
-function moveDraw(e){
-  if(!isDrawing || !currentLine) return;
+function getPos(e){
+  const rect=board.getBoundingClientRect();
+  if(e.touches){
+    return {
+      x:e.touches[0].clientX-rect.left,
+      y:e.touches[0].clientY-rect.top
+    };
+  }
+  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
+}
 
+function start(e){
+  const target=e.target.closest(".item");
+  if(!target) return;
+
+  const rect=target.getBoundingClientRect();
+  const boardRect=board.getBoundingClientRect();
+
+  dragging={
+    text:target.dataset.value,
+    side:target.dataset.side,
+    x:rect.left-boardRect.left+rect.width/2,
+    y:rect.top-boardRect.top+rect.height/2
+  };
+}
+
+function move(e){
+  if(!dragging) return;
   e.preventDefault();
-
-  const cRect = document.getElementById("gameArea").getBoundingClientRect();
-
-  let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-  currentLine.setAttribute("x2", clientX - cRect.left);
-  currentLine.setAttribute("y2", clientY - cRect.top);
+  const pos=getPos(e);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  redraw();
+  drawLine(dragging.x,dragging.y,pos.x,pos.y);
 }
-document.addEventListener("mouseup", stopDraw);
-document.addEventListener("touchend", stopDraw);
 
-function stopDraw(e){
-  if(!isDrawing || !currentLine) return;
+function end(e){
+  if(!dragging) return;
 
-  isDrawing = false;
+  const pos=getPos(e);
+  const element=document.elementFromPoint(
+    pos.x+board.getBoundingClientRect().left,
+    pos.y+board.getBoundingClientRect().top
+  );
 
-  let clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-  let clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+  if(element && element.classList.contains("item")){
+    if(element.dataset.side!==dragging.side){
 
-  const endElement = document.elementFromPoint(clientX, clientY);
+      const rect=element.getBoundingClientRect();
+      const boardRect=board.getBoundingClientRect();
 
-  if(
-    endElement &&
-    endElement.classList.contains("item") &&
-    endElement.dataset.side === "right"
-  ){
-      if(startElement.dataset.id === endElement.dataset.id){
-        currentLine.setAttribute("stroke","green");
-      }else{
-        currentLine.setAttribute("stroke","red");
-      }
-  }else{
-      svg.removeChild(currentLine);
+      connections.push({
+        from:dragging.text,
+        to:element.dataset.value,
+        x1:dragging.x,
+        y1:dragging.y,
+        x2:rect.left-boardRect.left+rect.width/2,
+        y2:rect.top-boardRect.top+rect.height/2
+      });
+    }
   }
 
-  currentLine = null;
+  dragging=null;
+  redraw();
 }
 
-function clearLines(){
-  while(svg.firstChild) svg.removeChild(svg.firstChild);
+function redraw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  connections.forEach(c=>{
+    drawLine(c.x1,c.y1,c.x2,c.y2,c.color||"black");
+  });
 }
 
-generateGame();
+function checkAnswer(){
+  let correctAll=true;
+
+  connections.forEach(c=>{
+    let match=pairs.find(p=>p.left===c.from && p.right===c.to);
+    c.color=match?"green":"red";
+    if(!match) correctAll=false;
+  });
+
+  redraw();
+
+  if(correctAll && connections.length===pairs.length){
+    document.getElementById("mascot").innerText="⭐";
+    speechSynthesis.speak(new SpeechSynthesisUtterance("Good job!"));
+  }else{
+    document.getElementById("mascot").innerText="🤔";
+  }
+}
+
+function resetBoard(){
+  connections=[];
+  dragging=null;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  document.getElementById("mascot").innerText="🧸";
+}
+
+board.addEventListener("touchstart",start);
+board.addEventListener("touchmove",move,{passive:false});
+board.addEventListener("touchend",end);
+
+board.addEventListener("mousedown",start);
+board.addEventListener("mousemove",move);
+board.addEventListener("mouseup",end);
+
+window.onload=function(){
+  resizeCanvas();
+  loadCategory();
+};
 </script>
 
 </body>
