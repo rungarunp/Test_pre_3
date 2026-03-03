@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Grade 1 Math - Level 1 Complete</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 40px; }
+h1, h2 { text-align: center; }
+.section { margin-top: 30px; }
+.question { margin: 20px 0; font-size: 20px; }
+.answer-line {
+    border-bottom: 2px solid black;
+    width: 120px;
+    display: inline-block;
+}
+.timer-box {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    color: darkred;
+    margin: 15px 0;
+}
+.buttons { text-align: center; margin-top: 20px; }
+button { padding: 8px 18px; margin: 5px; cursor: pointer; }
+@media print {
+    .buttons, .timer-box { display: none; }
+}
+</style>
+</head>
+<body>
+
+<h1>GRADE 1 MATH WORKSHEET</h1>
+<h2>Level 1 Complete (≤20)</h2>
+
+Name: _______________________   Date: _______________________
+
+<div class="timer-box">
+Time Left: <span id="time">03:00</span>
+</div>
+
+<div id="worksheet"></div>
+
+<div class="buttons">
+Minutes: <input type="number" id="minutes" value="3" min="1" style="width:60px;">
+<button onclick="startTimer()">Start Timer</button>
+<button onclick="generateWorksheet()">Generate New Set</button>
+<button onclick="window.print()">Print A4</button>
+</div>
+
+<script>
+let countdown;
+let timeRemaining = 180;
+
+function randomInt(max) {
+    return Math.floor(Math.random() * (max + 1));
+}
+
+function generateWorksheet() {
+    const container = document.getElementById("worksheet");
+    container.innerHTML = "";
+    let used = new Set();
+    let q = 1;
+
+    function uniqueProblem() {
+        let a,b,op,key;
+        do {
+            a=randomInt(20);
+            b=randomInt(20);
+            op=Math.random()<0.5?"+":"-";
+            if(op==="-" && b>a){[a,b]=[b,a];}
+            key=a+op+b;
+        } while(used.has(key));
+        used.add(key);
+        return `${a} ${op} ${b}`;
+    }
+
+    // Part 1: Addition & Subtraction
+    container.innerHTML += `<div class="section"><h3>Part 1: Addition & Subtraction</h3></div>`;
+    for(let i=0;i<6;i++){
+        container.innerHTML += `
+        <div class="question">
+        ${q++}. ${uniqueProblem()} = <span class="answer-line"></span>
+        </div>`;
+    }
+
+    // Part 2: Compare Numbers
+    container.innerHTML += `<div class="section"><h3>Part 2: มากกว่า น้อยกว่า (=, <, >)</h3></div>`;
+    for(let i=0;i<4;i++){
+        let a=randomInt(20);
+        let b=randomInt(20);
+        container.innerHTML += `
+        <div class="question">
+        ${q++}. ${a} ___ ${b}
+        </div>`;
+    }
+
+    // Part 3: Ordering Numbers
+    container.innerHTML += `<div class="section"><h3>Part 3: เรียงลำดับจากน้อยไปมาก</h3></div>`;
+    for(let i=0;i<3;i++){
+        let nums=[randomInt(20),randomInt(20),randomInt(20)];
+        container.innerHTML += `
+        <div class="question">
+        ${q++}. ${nums.join(" , ")} → ______________________
+        </div>`;
+    }
+}
+
+function startTimer(){
+    clearInterval(countdown);
+    let minutes=parseInt(document.getElementById("minutes").value);
+    timeRemaining=minutes*60;
+    updateDisplay();
+    countdown=setInterval(()=>{
+        timeRemaining--;
+        updateDisplay();
+        if(timeRemaining<=0){
+            clearInterval(countdown);
+            playBeep();
+            alert("หมดเวลาแล้ว!");
+        }
+    },1000);
+}
+
+function updateDisplay(){
+    let min=Math.floor(timeRemaining/60);
+    let sec=timeRemaining%60;
+    document.getElementById("time").textContent=
+        String(min).padStart(2,'0')+":"+
+        String(sec).padStart(2,'0');
+}
+
+function playBeep(){
+    const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const oscillator=audioCtx.createOscillator();
+    oscillator.type="sine";
+    oscillator.frequency.setValueAtTime(800,audioCtx.currentTime);
+    oscillator.connect(audioCtx.destination);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime+1);
+}
+
+generateWorksheet();
+</script>
+
+</body>
+</html>
