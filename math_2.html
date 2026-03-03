@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Level 1 Math ≤ 20</title>
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #f4f9ff;
+}
+h1 { color: #0077cc; }
+
+#question {
+    font-size: 28px;
+    margin: 20px;
+    font-weight: bold;
+}
+
+canvas {
+    border: 3px solid #0077cc;
+    background: white;
+    touch-action: none;
+}
+
+button {
+    padding: 10px 15px;
+    margin: 5px;
+    font-size: 16px;
+}
+
+#timer {
+    font-size: 20px;
+    color: red;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Level 1: Basic ≤ 20</h1>
+
+<div id="timer">⏰ เวลา: 60</div>
+
+<div id="question">กดปุ่มเริ่ม</div>
+
+<button onclick="startGame()">เริ่ม</button>
+<button onclick="clearCanvas()">ล้างคำตอบ</button>
+
+<br><br>
+
+<canvas id="canvas" width="500" height="300"></canvas>
+
+<audio id="timeoutSound">
+  <source src="https://www.soundjay.com/button/beep-07.wav" type="audio/wav">
+</audio>
+
+<script>
+let timer;
+let timeLeft = 60;
+
+function startGame() {
+    generateQuestion();
+    timeLeft = 60;
+    document.getElementById("timer").innerText = "⏰ เวลา: " + timeLeft;
+    clearInterval(timer);
+
+    timer = setInterval(function() {
+        timeLeft--;
+        document.getElementById("timer").innerText = "⏰ เวลา: " + timeLeft;
+
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            document.getElementById("timeoutSound").play();
+            alert("หมดเวลาแล้ว!");
+        }
+    }, 1000);
+}
+
+function generateQuestion() {
+    let type = Math.floor(Math.random() * 4);
+    let a = Math.floor(Math.random() * 20);
+    let b = Math.floor(Math.random() * 20);
+
+    if (type === 0) {
+        document.getElementById("question").innerText = a + " + " + b + " = ?";
+    }
+    else if (type === 1) {
+        if (a < b) [a, b] = [b, a];
+        document.getElementById("question").innerText = a + " - " + b + " = ?";
+    }
+    else if (type === 2) {
+        document.getElementById("question").innerText = 
+            "ใส่เครื่องหมาย > < หรือ = :  " + a + "  ?  " + b;
+    }
+    else {
+        let nums = [];
+        for (let i = 0; i < 3; i++) {
+            nums.push(Math.floor(Math.random() * 20));
+        }
+        document.getElementById("question").innerText = 
+            "เรียงจากน้อย → มาก : " + nums.join(", ");
+    }
+}
+
+let canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
+let drawing = false;
+
+canvas.addEventListener("pointerdown", function(e) {
+    drawing = true;
+    ctx.beginPath();
+    ctx.moveTo(e.offsetX, e.offsetY);
+});
+
+canvas.addEventListener("pointermove", function(e) {
+    if (!drawing) return;
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+});
+
+canvas.addEventListener("pointerup", function() {
+    drawing = false;
+});
+
+function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+</script>
+
+</body>
+</html>
