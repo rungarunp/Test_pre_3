@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Maze Game</title>
+
+<style>
+
+body{
+font-family:sans-serif;
+text-align:center;
+background:#f5f5f5;
+}
+
+#maze{
+display:grid;
+margin:20px auto;
+justify-content:center;
+gap:2px;
+}
+
+.cell{
+width:40px;
+height:40px;
+background:white;
+position:relative;
+}
+
+.wall{
+background:#333;
+}
+
+.goal{
+background:#ffd966;
+}
+
+.player{
+position:absolute;
+width:34px;
+height:34px;
+background:#4CAF50;
+border-radius:50%;
+transition:all 0.2s linear;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:18px;
+color:white;
+}
+
+.controls button{
+font-size:28px;
+width:80px;
+height:80px;
+margin:5px;
+border-radius:15px;
+border:none;
+background:#4CAF50;
+color:white;
+}
+
+.controls button:active{
+background:#2e7d32;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>🧠 AI Maze Game</h2>
+<p>พา 😀 ไปหา 🎁</p>
+
+<div id="maze"></div>
+
+<div class="controls">
+
+<div>
+<button ontouchstart="move(-1,0)">⬆</button>
+</div>
+
+<div>
+<button ontouchstart="move(0,-1)">⬅</button>
+<button ontouchstart="move(1,0)">⬇</button>
+<button ontouchstart="move(0,1)">➡</button>
+</div>
+
+</div>
+
+<br>
+<button onclick="generateMaze()">🎲 New Maze</button>
+
+<script>
+
+let size=15
+let maze=[]
+let player={x:1,y:1}
+
+function generateMaze(){
+
+maze=[]
+for(let i=0;i<size;i++){
+maze[i]=[]
+for(let j=0;j<size;j++){
+maze[i][j]=1
+}
+}
+
+function shuffle(a){
+return a.sort(()=>Math.random()-0.5)
+}
+
+function carve(x,y){
+
+maze[x][y]=0
+
+let dirs=shuffle([
+[2,0],
+[-2,0],
+[0,2],
+[0,-2]
+])
+
+for(let [dx,dy] of dirs){
+
+let nx=x+dx
+let ny=y+dy
+
+if(nx>0 && ny>0 && nx<size-1 && ny<size-1 && maze[nx][ny]===1){
+
+maze[x+dx/2][y+dy/2]=0
+carve(nx,ny)
+
+}
+
+}
+
+}
+
+carve(1,1)
+
+maze[size-2][size-2]=2
+
+player={x:1,y:1}
+
+drawMaze()
+
+}
+
+function drawMaze(){
+
+const mazeDiv=document.getElementById("maze")
+
+mazeDiv.style.gridTemplateColumns=`repeat(${size},40px)`
+mazeDiv.innerHTML=""
+
+for(let i=0;i<size;i++){
+
+for(let j=0;j<size;j++){
+
+const cell=document.createElement("div")
+cell.classList.add("cell")
+
+if(maze[i][j]===1)
+cell.classList.add("wall")
+
+if(maze[i][j]===2){
+cell.classList.add("goal")
+cell.innerHTML="🎁"
+}
+
+cell.id=`cell-${i}-${j}`
+
+mazeDiv.appendChild(cell)
+
+}
+
+}
+
+drawPlayer()
+
+}
+
+function drawPlayer(){
+
+document.querySelectorAll(".player").forEach(p=>p.remove())
+
+const cell=document.getElementById(`cell-${player.x}-${player.y}`)
+
+const p=document.createElement("div")
+p.classList.add("player")
+p.innerHTML="😀"
+
+cell.appendChild(p)
+
+}
+
+function move(dx,dy){
+
+let nx=player.x+dx
+let ny=player.y+dy
+
+if(maze[nx][ny]===1) return
+
+player.x=nx
+player.y=ny
+
+drawPlayer()
+
+if(maze[nx][ny]===2){
+
+setTimeout(()=>{
+alert("🎉 เก่งมาก!")
+generateMaze()
+},200)
+
+}
+
+}
+
+document.addEventListener("keydown",(e)=>{
+
+if(e.key==="ArrowUp") move(-1,0)
+if(e.key==="ArrowDown") move(1,0)
+if(e.key==="ArrowLeft") move(0,-1)
+if(e.key==="ArrowRight") move(0,1)
+
+})
+
+generateMaze()
+
+</script>
+
+</body>
+</html>
