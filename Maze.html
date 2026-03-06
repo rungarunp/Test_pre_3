@@ -3,62 +3,59 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maze Brain Game</title>
+<title>Maze Game</title>
 
 <style>
 
 body{
-    font-family:sans-serif;
-    text-align:center;
-    background:#f5f5f5;
-}
-
-h2{
-    margin-top:10px;
+font-family:sans-serif;
+text-align:center;
+background:#f0f0f0;
 }
 
 #maze{
-    display:grid;
-    justify-content:center;
-    margin:20px auto;
+display:grid;
+justify-content:center;
+margin:20px auto;
 }
 
 .cell{
-    width:40px;
-    height:40px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:24px;
+width:42px;
+height:42px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:24px;
 }
 
-.wall{
-    background:#333;
-}
+.wall{background:#333;}
+.path{background:white;}
+.player{background:#6edb75;}
+.goal{background:#ffd966;}
 
-.path{
-    background:#fff;
-}
-
-.player{
-    background:#6edb75;
-}
-
-.goal{
-    background:#ffd966;
+.controls{
+margin-top:10px;
 }
 
 .controls button{
-    font-size:26px;
-    padding:15px 25px;
-    margin:5px;
-    border-radius:10px;
+font-size:30px;
+width:80px;
+height:80px;
+margin:5px;
+border-radius:15px;
+border:none;
+background:#4CAF50;
+color:white;
+}
+
+.controls button:active{
+background:#2e7d32;
 }
 
 .newBtn{
-    margin-top:10px;
-    font-size:18px;
-    padding:10px 20px;
+margin-top:10px;
+font-size:18px;
+padding:10px 20px;
 }
 
 </style>
@@ -66,106 +63,115 @@ h2{
 
 <body>
 
-<h2>🧠 เกมแก้เขาวงกต</h2>
+<h2>🧩 เกมแก้เขาวงกต</h2>
 <p>พา 😀 ไปหา 🎁</p>
 
 <div id="maze"></div>
 
 <div class="controls">
-<br>
-<button onclick="move(-1,0)">⬆</button>
-<br>
-<button onclick="move(0,-1)">⬅</button>
-<button onclick="move(1,0)">⬇</button>
-<button onclick="move(0,1)">➡</button>
+
+<div>
+<button ontouchstart="move(-1,0)">⬆</button>
 </div>
 
-<br>
-<button class="newBtn" onclick="generateMaze()">🎲 New Maze</button>
+<div>
+<button ontouchstart="move(0,-1)">⬅</button>
+<button ontouchstart="move(1,0)">⬇</button>
+<button ontouchstart="move(0,1)">➡</button>
+</div>
+
+</div>
+
+<button class="newBtn" onclick="generateMaze()">🎲 สร้างเขาวงกตใหม่</button>
 
 <script>
 
-let size = 9
+let size=9
 let maze=[]
 let player={x:1,y:1}
 
 function generateMaze(){
 
-    maze=[]
+maze=[]
 
-    for(let i=0;i<size;i++){
-        maze[i]=[]
-        for(let j=0;j<size;j++){
+for(let i=0;i<size;i++){
 
-            if(i===0 || j===0 || i===size-1 || j===size-1){
-                maze[i][j]=1
-            }else{
-                maze[i][j]=(Math.random()<0.3)?1:0
-            }
+maze[i]=[]
 
-        }
-    }
+for(let j=0;j<size;j++){
 
-    maze[1][1]=0
-    maze[size-2][size-2]=2
+if(i===0||j===0||i===size-1||j===size-1)
+maze[i][j]=1
+else
+maze[i][j]=(Math.random()<0.3)?1:0
 
-    player={x:1,y:1}
+}
 
-    drawMaze()
+}
+
+maze[1][1]=0
+maze[size-2][size-2]=2
+
+player={x:1,y:1}
+
+drawMaze()
 
 }
 
 function drawMaze(){
 
-    const mazeDiv=document.getElementById("maze")
-    mazeDiv.style.gridTemplateColumns=`repeat(${size},40px)`
-    mazeDiv.innerHTML=""
+const mazeDiv=document.getElementById("maze")
+mazeDiv.style.gridTemplateColumns=`repeat(${size},42px)`
+mazeDiv.innerHTML=""
 
-    for(let i=0;i<size;i++){
-        for(let j=0;j<size;j++){
+for(let i=0;i<size;i++){
 
-            const cell=document.createElement("div")
+for(let j=0;j<size;j++){
 
-            cell.classList.add("cell")
+const cell=document.createElement("div")
+cell.classList.add("cell")
 
-            if(maze[i][j]===1) cell.classList.add("wall")
-            else cell.classList.add("path")
+if(maze[i][j]===1) cell.classList.add("wall")
+else cell.classList.add("path")
 
-            if(maze[i][j]===2){
-                cell.classList.add("goal")
-                cell.innerHTML="🎁"
-            }
+if(maze[i][j]===2){
+cell.classList.add("goal")
+cell.innerHTML="🎁"
+}
 
-            if(player.x===i && player.y===j){
-                cell.classList.add("player")
-                cell.innerHTML="😀"
-            }
+if(player.x===i && player.y===j){
+cell.classList.add("player")
+cell.innerHTML="😀"
+}
 
-            mazeDiv.appendChild(cell)
+mazeDiv.appendChild(cell)
 
-        }
-    }
+}
+
+}
 
 }
 
 function move(dx,dy){
 
-    let nx=player.x+dx
-    let ny=player.y+dy
+let nx=player.x+dx
+let ny=player.y+dy
 
-    if(maze[nx][ny]===1) return
+if(maze[nx][ny]===1) return
 
-    player.x=nx
-    player.y=ny
+player.x=nx
+player.y=ny
 
-    if(maze[nx][ny]===2){
-        setTimeout(()=>{
-            alert("🎉 เก่งมาก ถึงของขวัญแล้ว!")
-            generateMaze()
-        },100)
-    }
+if(maze[nx][ny]===2){
 
-    drawMaze()
+setTimeout(()=>{
+alert("🎉 เก่งมาก!")
+generateMaze()
+},100)
+
+}
+
+drawMaze()
 
 }
 
