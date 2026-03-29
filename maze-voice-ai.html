@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice AI Maze</title>
+
+<style>
+body{font-family:sans-serif;text-align:center;background:#f5f5f5;}
+#maze{display:grid;justify-content:center;margin:16px auto;gap:2px;}
+.cell{width:40px;height:40px;background:#fff;position:relative;}
+.wall{background:#333;}
+.goal{background:#ffd966;}
+.player{
+  position:absolute;width:30px;height:30px;border-radius:50%;
+  background:#4CAF50;top:5px;left:5px;transition:all .18s linear;
+  display:flex;align-items:center;justify-content:center;color:#fff;
+}
+#status{font-size:18px;margin-top:6px;}
+#hint{font-size:14px;color:#666;}
+button{font-size:16px;padding:8px 14px;margin:6px;}
+</style>
+</head>
+
+<body>
+
+<h3>🎤 Voice AI Maze</h3>
+<p>พูด: <b>go up / go down / go left / go right</b></p>
+
+<div id="maze"></div>
+
+<button onclick="generateMaze()">🎲 New Maze</button>
+<button onclick="restartListening()">🔁 Restart Mic</button>
+
+<div id="status">Listening...</div>
+<div id="hint"></div>
+
+<script>
+// ===== Maze (DFS สร้างมีทางออกเสมอ) =====
+let size=13, maze=[], player={x:1,y:1};
+
+function generateMaze(){
+  maze=[];
+  for(let i=0;i<size;i++){ maze[i]=[]; for(let j=0;j<size;j++) maze[i][j]=1; }
+
+  const shuffle=a=>a.sort(()=>Math.random()-0.5);
+  function carve(x,y){
+    maze[x][y]=0;
+    for(const [dx,dy] of shuffle([[2,0],[-2,0],[0,2],[0,-2]])){
+      const nx=x+dx, ny=y+dy;
+      if(nx>0&&ny>0&&nx<size-1&&ny<size-1&&maze[nx][ny]===1){
+        maze[x+dx/2][y+dy/2]=0;
+        carve(nx,ny);
+      }
+    }
+  }
+  carve(1,1);
+  maze[size-2][size-2]=2;
+  player={x:1,y:1};
+  drawMaze();
+}
+
+function drawMaze(){
+  const el=document.getElementById("maze");
+  el.style.gridTemplateColumns=`repeat(${size},40px)`;
+  el.innerHTML="";
+  for(let i=0;i<size;i++){
+    for(let j=0;j<size;j++){
+      const c=document.createElement("div");
+      c.className="cell";
+      if(maze[i][j]===1) c.classList.add("wall");
+      if(maze[i][j]===2){ c.classList.add("goal"); c.innerHTML="🎁"; }
+      c.id=`c-${i}-${j}`;
+      el.appendChild(c);
+    }
+  }
+  drawPlayer();
+}
+
+function drawPlayer(){
+  document.querySelectorAll(".player").forEach(p=>p.remove());
+  const cell=document.getElementById(`c-${player.x}-${player.y}`);
+  const p=document.createElement("div");
+  p.className="player";
+  p.textContent="😀";
+  cell.appendChild(p);
+}
+
+function move(dx,dy){
+  const nx=player.x+dx, ny=player.y+dy;
+  if(maze[nx][ny]===1) return;
+  player.x=nx; player.y=ny;
+  drawPlayer();
+  if(maze[nx][ny]===2){
+    setTimeout(()=>{
+      speak("Great job!");
+      alert("🎉 You win!");
+      generateMaze();
+    },150);
+  }
+}
+
+// ===== Voice AI =====
+let recognition;
+
+function initVoice(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    document.getElementById("status").innerText="❌ Browser ไม่รองรับ Speech Recognition";
+    return;
+  }
+  recognition = new SR();
+  recognition.lang = "en-US";
+  recognition.continuous = true;      // ฟังต่อเนื่อง
+  recognition.interimResults = false; // เอาผลลัพธ์ชัดเจน
+
+  recognition.onresult = (e)=>{
+    const text = e.results[e.results.length-1][0].transcript.toLowerCase().trim();
+    document.getElementById("status").innerText = "You said: " + text;
+
+    const cmd = parseCommand(text);
+    if(cmd.ok){
+      speak(cmd.canonical); // อ่านคำที่ถูก
+      run(cmd.canonical);
+      document.getElementById("hint").innerText="";
+    }else{
+      // แนะนำคำที่ใกล้เคียง
+      const suggestion = bestMatch(text, COMMANDS);
+      document.getElementById("hint").innerText = suggestion
+        ? `ลองพูด: "${suggestion}"` : `ลองพูด: "go up / go down / go left / go right"`;
+      if(suggestion) speak(`Try ${suggestion}`);
+    }
+  };
+
+  recognition.onend = ()=>{
+    // ให้กลับมาฟังใหม่อัตโนมัติ
+    try{ recognition.start(); }catch(e){}
+  };
+
+  recognition.onerror = ()=>{
+    // บางครั้งจะ error แล้วหยุด ให้เริ่มใหม่
+    try{ recognition.start(); }catch(e){}
+  };
+
+  try{ recognition.start(); }catch(e){}
+}
+
+function restartListening(){
+  if(recognition){
+    try{ recognition.stop(); }catch(e){}
+    setTimeout(()=>{ try{ recognition.start(); }catch(e){} },200);
+  }else{
+    initVoice();
+  }
+}
+
+// ===== Command Parsing + Fuzzy =====
+const COMMANDS = ["go up","go down","go left","go right"];
+
+function normalize(t){
+  return t
+    .replace(/[^a-z\s]/g,"")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function parseCommand(text){
+  const t = normalize(text);
+
+  // exact / contains
+  for(const c of COMMANDS){
+    if(t === c || t.includes(c)) return {ok:true, canonical:c};
+  }
+
+  // keyword based (เด็กอาจพูด "up please" ฯลฯ)
+  if(t.includes("up")) return {ok:true, canonical:"go up"};
+  if(t.includes("down")) return {ok:true, canonical:"go down"};
+  if(t.includes("left")) return {ok:true, canonical:"go left"};
+  if(t.includes("right")) return {ok:true, canonical:"go right"};
+
+  return {ok:false};
+}
+
+function run(cmd){
+  if(cmd==="go up") move(-1,0);
+  if(cmd==="go down") move(1,0);
+  if(cmd==="go left") move(0,-1);
+  if(cmd==="go right") move(0,1);
+}
+
+// Levenshtein distance (ง่าย ๆ)
+function distance(a,b){
+  const dp = Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+  for(let i=0;i<=a.length;i++) dp[i][0]=i;
+  for(let j=0;j<=b.length;j++) dp[0][j]=j;
+  for(let i=1;i<=a.length;i++){
+    for(let j=1;j<=b.length;j++){
+      const cost = a[i-1]===b[j-1]?0:1;
+      dp[i][j] = Math.min(
+        dp[i-1][j]+1,
+        dp[i][j-1]+1,
+        dp[i-1][j-1]+cost
+      );
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function bestMatch(text, list){
+  const t = normalize(text);
+  let best=null, bestScore=Infinity;
+  for(const c of list){
+    const d = distance(t, c);
+    if(d < bestScore){ bestScore=d; best=c; }
+  }
+  // threshold เล็กน้อย
+  return bestScore <= Math.max(3, Math.floor(best.length*0.4)) ? best : null;
+}
+
+// ===== TTS (อ่านออกเสียง) =====
+function speak(text){
+  if(!("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 0.9; // ช้าลงนิดให้เด็กฟังชัด
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
+
+// ===== Init =====
+generateMaze();
+initVoice();
+
+</script>
+</body>
+</html>
