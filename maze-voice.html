@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Maze Game</title>
+
+<style>
+body{
+    font-family:sans-serif;
+    text-align:center;
+    background:#f5f5f5;
+}
+
+#maze{
+    display:grid;
+    justify-content:center;
+    margin:20px auto;
+    gap:2px;
+}
+
+.cell{
+    width:40px;
+    height:40px;
+    background:#fff;
+    position:relative;
+}
+
+.wall{background:#333;}
+.goal{background:#ffd966;}
+
+.player{
+    position:absolute;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    background:#4CAF50;
+    top:5px;
+    left:5px;
+    transition:all 0.2s;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+}
+
+button{
+    font-size:18px;
+    padding:10px 20px;
+    margin:10px;
+}
+
+#text{
+    font-size:20px;
+    margin-top:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>🎤 Voice Maze Game</h2>
+<p>พูด: <b>go up / go down / go left / go right</b></p>
+
+<div id="maze"></div>
+
+<button onclick="startVoice()">🎤 Start Speaking</button>
+<button onclick="generateMaze()">🎲 New Maze</button>
+
+<div id="text">...</div>
+
+<script>
+
+let size=11
+let maze=[]
+let player={x:1,y:1}
+
+function generateMaze(){
+
+maze=[]
+for(let i=0;i<size;i++){
+maze[i]=[]
+for(let j=0;j<size;j++){
+maze[i][j]=1
+}
+}
+
+function shuffle(a){ return a.sort(()=>Math.random()-0.5) }
+
+function carve(x,y){
+maze[x][y]=0
+let dirs=shuffle([[2,0],[-2,0],[0,2],[0,-2]])
+
+for(let [dx,dy] of dirs){
+let nx=x+dx, ny=y+dy
+if(nx>0 && ny>0 && nx<size-1 && ny<size-1 && maze[nx][ny]===1){
+maze[x+dx/2][y+dy/2]=0
+carve(nx,ny)
+}
+}
+}
+
+carve(1,1)
+maze[size-2][size-2]=2
+player={x:1,y:1}
+
+drawMaze()
+
+}
+
+function drawMaze(){
+
+const mazeDiv=document.getElementById("maze")
+mazeDiv.style.gridTemplateColumns=`repeat(${size},40px)`
+mazeDiv.innerHTML=""
+
+for(let i=0;i<size;i++){
+for(let j=0;j<size;j++){
+
+let cell=document.createElement("div")
+cell.classList.add("cell")
+
+if(maze[i][j]===1) cell.classList.add("wall")
+if(maze[i][j]===2){
+cell.classList.add("goal")
+cell.innerHTML="🎁"
+}
+
+cell.id=`c-${i}-${j}`
+mazeDiv.appendChild(cell)
+
+}
+}
+
+drawPlayer()
+
+}
+
+function drawPlayer(){
+
+document.querySelectorAll(".player").forEach(p=>p.remove())
+
+let cell=document.getElementById(`c-${player.x}-${player.y}`)
+
+let p=document.createElement("div")
+p.classList.add("player")
+p.innerHTML="😀"
+
+cell.appendChild(p)
+
+}
+
+function move(dx,dy){
+
+let nx=player.x+dx
+let ny=player.y+dy
+
+if(maze[nx][ny]===1) return
+
+player.x=nx
+player.y=ny
+
+drawPlayer()
+
+if(maze[nx][ny]===2){
+setTimeout(()=>{
+alert("🎉 You win!")
+generateMaze()
+},200)
+}
+
+}
+
+function startVoice(){
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+
+if(!SpeechRecognition){
+alert("❌ Browser ไม่รองรับ Speech Recognition")
+return
+}
+
+const recognition = new SpeechRecognition()
+recognition.lang="en-US"
+recognition.start()
+
+recognition.onresult = function(event){
+
+let text = event.results[0][0].transcript.toLowerCase()
+document.getElementById("text").innerText = "You said: " + text
+
+if(text.includes("up")) move(-1,0)
+else if(text.includes("down")) move(1,0)
+else if(text.includes("left")) move(0,-1)
+else if(text.includes("right")) move(0,1)
+else alert("Try: go up / go down / go left / go right")
+
+}
+
+}
+
+generateMaze()
+
+</script>
+
+</body>
+</html>
