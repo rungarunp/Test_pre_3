@@ -3,50 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Voice AI Maze</title>
+<title>Voice AI Maze PRO</title>
 
 <style>
-body{font-family:sans-serif;text-align:center;background:#f5f5f5;}
-#maze{display:grid;justify-content:center;margin:16px auto;gap:2px;}
-.cell{width:36px;height:36px;background:#fff;position:relative;}
-.wall{background:#333;}
-.goal{background:#ffd966;}
+body{font-family:sans-serif;text-align:center;background:#111;color:#fff;}
+#maze{
+  display:grid;justify-content:center;margin:16px auto;gap:2px;
+  touch-action:manipulation;
+}
+.cell{width:34px;height:34px;background:#222;position:relative;}
+.wall{background:#000;}
+.goal{background:#ffcc00;}
 .player{
   position:absolute;width:26px;height:26px;border-radius:50%;
-  background:#4CAF50;top:5px;left:5px;transition:all .18s linear;
-  display:flex;align-items:center;justify-content:center;color:#fff;
+  background:#00e676;top:4px;left:4px;
+  transition:all .15s cubic-bezier(.25,.8,.25,1);
+  display:flex;align-items:center;justify-content:center;
 }
-#status{font-size:18px;margin-top:6px;}
-#hint{font-size:14px;color:#666;}
-.controls{margin:10px;}
-button, select{font-size:15px;padding:6px 10px;margin:4px;}
+.controls{margin:8px;}
+button,select{padding:6px 10px;margin:4px;font-size:14px;}
+#status{font-size:14px;color:#aaa;}
+#hint{font-size:13px;color:#ff8888;}
 </style>
 </head>
 
 <body>
 
-<h3>🎤 Voice AI Maze</h3>
-<p>พูด: <b>go up / go down / go left / go right</b></p>
+<h3>🎮 Voice AI Maze PRO</h3>
 
 <div class="controls">
-  🔢 ขนาด:
-  <select id="sizeSelect" onchange="changeSize()">
-    <option value="7">7 x 7</option>
-    <option value="11" selected>11 x 11</option>
-    <option value="15">15 x 15</option>
-    <option value="21">21 x 21</option>
-  </select>
-
-  <button onclick="generateMaze()">🎲 New Maze</button>
-  <button onclick="restartListening()">🎤 Restart Mic</button>
+<select id="sizeSelect" onchange="changeSize()">
+<option value="9">9x9</option>
+<option value="13" selected>13x13</option>
+<option value="17">17x17</option>
+</select>
+<button onclick="generateMaze()">🎲 New</button>
+<button onclick="unlockAudio()">🔊 Enable Sound</button>
 </div>
 
 <div class="controls">
-  🔊 ตัวอย่างคำสั่ง:
-  <button onclick="speak('go up')">Up</button>
-  <button onclick="speak('go down')">Down</button>
-  <button onclick="speak('go left')">Left</button>
-  <button onclick="speak('go right')">Right</button>
+<button onclick="speak('go up')">⬆️</button>
+<button onclick="speak('go down')">⬇️</button>
+<button onclick="speak('go left')">⬅️</button>
+<button onclick="speak('go right')">➡️</button>
 </div>
 
 <div id="maze"></div>
@@ -56,15 +55,36 @@ button, select{font-size:15px;padding:6px 10px;margin:4px;}
 
 <script>
 // ===== Config =====
-let size=11, maze=[], player={x:1,y:1};
+let size=13, maze=[], player={x:1,y:1};
+let moveQueue=[]; let moving=false;
 
-// ===== Change Size =====
+// ===== Audio (Game Sound) =====
+let audioCtx;
+function unlockAudio(){
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+}
+
+function beep(freq=500,duration=80){
+  if(!audioCtx) return;
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  o.frequency.value=freq;
+  o.start();
+  g.gain.setValueAtTime(0.1,audioCtx.currentTime);
+  o.stop(audioCtx.currentTime+duration/1000);
+}
+
+function soundMove(){ beep(600,50); }
+function soundHit(){ beep(150,120); }
+function soundWin(){ beep(900,200); setTimeout(()=>beep(1200,200),200); }
+
+// ===== Maze =====
 function changeSize(){
-  size = parseInt(document.getElementById("sizeSelect").value);
+  size=parseInt(sizeSelect.value);
   generateMaze();
 }
 
-// ===== Maze Generator (DFS) =====
 function generateMaze(){
   maze=[];
   for(let i=0;i<size;i++){
@@ -88,21 +108,20 @@ function generateMaze(){
   carve(1,1);
   maze[size-2][size-2]=2;
   player={x:1,y:1};
+  moveQueue=[];
   drawMaze();
 }
 
-// ===== Draw =====
 function drawMaze(){
   const el=document.getElementById("maze");
-  el.style.gridTemplateColumns=`repeat(${size},36px)`;
+  el.style.gridTemplateColumns=`repeat(${size},34px)`;
   el.innerHTML="";
-
   for(let i=0;i<size;i++){
     for(let j=0;j<size;j++){
       const c=document.createElement("div");
       c.className="cell";
       if(maze[i][j]===1) c.classList.add("wall");
-      if(maze[i][j]===2){ c.classList.add("goal"); c.innerHTML="🎁"; }
+      if(maze[i][j]===2){ c.classList.add("goal"); c.innerHTML="🏆"; }
       c.id=`c-${i}-${j}`;
       el.appendChild(c);
     }
@@ -119,107 +138,85 @@ function drawPlayer(){
   cell.appendChild(p);
 }
 
-// ===== Move =====
-function move(dx,dy){
-  const nx=player.x+dx, ny=player.y+dy;
-  if(maze[nx][ny]===1) return;
-  player.x=nx; player.y=ny;
-  drawPlayer();
-
-  if(maze[nx][ny]===2){
-    setTimeout(()=>{
-      speak("Great job!");
-      alert("🎉 You win!");
-      generateMaze();
-    },150);
-  }
+// ===== Movement Queue (Smooth) =====
+function enqueueMove(dx,dy){
+  moveQueue.push({dx,dy});
+  if(!moving) processQueue();
 }
 
-// ===== Voice =====
-let recognition;
+function processQueue(){
+  if(moveQueue.length===0){ moving=false; return; }
+  moving=true;
 
-function initVoice(){
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){
-    document.getElementById("status").innerText="❌ ไม่รองรับเสียง";
+  const {dx,dy}=moveQueue.shift();
+  const nx=player.x+dx, ny=player.y+dy;
+
+  if(maze[nx][ny]===1){
+    soundHit();
+    processQueue();
     return;
   }
 
-  recognition = new SR();
-  recognition.lang = "en-US";
-  recognition.continuous = true;
+  player.x=nx; player.y=ny;
+  drawPlayer();
+  soundMove();
 
-  recognition.onresult = (e)=>{
-    const text = e.results[e.results.length-1][0].transcript.toLowerCase();
-    document.getElementById("status").innerText="You said: "+text;
+  if(maze[nx][ny]===2){
+    soundWin();
+    setTimeout(()=>{
+      alert("🎉 WIN!");
+      generateMaze();
+    },200);
+    return;
+  }
 
-    const cmd = parseCommand(text);
-    if(cmd.ok){
-      speak(cmd.canonical);
-      run(cmd.canonical);
-      document.getElementById("hint").innerText="";
-    }else{
-      const s = bestMatch(text, COMMANDS);
-      document.getElementById("hint").innerText = s ? `ลองพูด: ${s}` : "ลองใหม่";
-      if(s) speak("Try " + s);
+  setTimeout(processQueue,120); // smooth speed
+}
+
+// ===== Voice Fast Mode =====
+let recognition;
+
+function initVoice(){
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return;
+
+  recognition=new SR();
+  recognition.lang="en-US";
+  recognition.continuous=true;
+  recognition.interimResults=true; // ⚡ ฟังเร็วขึ้น
+
+  recognition.onresult=(e)=>{
+    const res=e.results[e.results.length-1];
+    const text=res[0].transcript.toLowerCase();
+
+    document.getElementById("status").innerText=text;
+
+    const cmd=parseCommand(text);
+    if(cmd){
+      run(cmd);
     }
   };
 
-  recognition.onend = ()=>{ try{recognition.start();}catch(e){} };
-  recognition.onerror = ()=>{ try{recognition.start();}catch(e){} };
+  recognition.onend=()=>{try{recognition.start();}catch{}};
+  recognition.onerror=()=>{try{recognition.start();}catch{}};
 
-  try{ recognition.start(); }catch(e){}
-}
-
-function restartListening(){
-  try{ recognition.stop(); }catch(e){}
-  setTimeout(()=>initVoice(),200);
+  recognition.start();
 }
 
 // ===== Command =====
-const COMMANDS=["go up","go down","go left","go right"];
-
 function parseCommand(t){
-  t=t.toLowerCase();
-  if(t.includes("up")) return {ok:true,canonical:"go up"};
-  if(t.includes("down")) return {ok:true,canonical:"go down"};
-  if(t.includes("left")) return {ok:true,canonical:"go left"};
-  if(t.includes("right")) return {ok:true,canonical:"go right"};
-  return {ok:false};
+  if(t.includes("up")) return "up";
+  if(t.includes("down")) return "down";
+  if(t.includes("left")) return "left";
+  if(t.includes("right")) return "right";
+  return null;
 }
 
 function run(cmd){
-  if(cmd==="go up") move(-1,0);
-  if(cmd==="go down") move(1,0);
-  if(cmd==="go left") move(0,-1);
-  if(cmd==="go right") move(0,1);
-}
-
-// ===== Fuzzy =====
-function distance(a,b){
-  const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
-  for(let i=0;i<=a.length;i++) dp[i][0]=i;
-  for(let j=0;j<=b.length;j++) dp[0][j]=j;
-
-  for(let i=1;i<=a.length;i++){
-    for(let j=1;j<=b.length;j++){
-      dp[i][j]=Math.min(
-        dp[i-1][j]+1,
-        dp[i][j-1]+1,
-        dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
-      );
-    }
-  }
-  return dp[a.length][b.length];
-}
-
-function bestMatch(t,list){
-  let best=null,score=999;
-  for(const c of list){
-    const d=distance(t,c);
-    if(d<score){score=d;best=c;}
-  }
-  return score<=3?best:null;
+  if(cmd==="up") enqueueMove(-1,0);
+  if(cmd==="down") enqueueMove(1,0);
+  if(cmd==="left") enqueueMove(0,-1);
+  if(cmd==="right") enqueueMove(0,1);
 }
 
 // ===== TTS =====
