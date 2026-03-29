@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alphabet Match PRO</title>
+
+<style>
+body{
+  font-family:sans-serif;
+  text-align:center;
+  background:#111;
+  color:#fff;
+}
+
+h2{margin-top:10px;}
+
+#grid{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:10px;
+  max-width:420px;
+  margin:auto;
+}
+
+.card{
+  perspective:600px;
+  height:80px;
+}
+
+.inner{
+  position:relative;
+  width:100%;
+  height:100%;
+  transition:transform .4s;
+  transform-style:preserve-3d;
+}
+
+.card.open .inner{
+  transform:rotateY(180deg);
+}
+
+.face{
+  position:absolute;
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+  backface-visibility:hidden;
+  font-size:26px;
+}
+
+.front{background:#333;}
+.back{
+  background:#fff;
+  color:#000;
+  transform:rotateY(180deg);
+}
+
+.matched .back{
+  background:#4caf50;
+  color:#fff;
+}
+
+#status{margin:12px;}
+
+button{
+  margin:6px;
+  padding:8px 14px;
+}
+
+/* Preview */
+#preview{
+  display:none;
+  margin-top:15px;
+}
+
+.preview-item{
+  display:inline-block;
+  margin:6px;
+  font-size:20px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🎮 Alphabet Match PRO</h2>
+
+<div>
+<button onclick="initGame()">🔄 เริ่มใหม่</button>
+<button onclick="togglePreview()">📖 ดูคำทั้งหมด</button>
+</div>
+
+<div id="grid"></div>
+
+<div id="status">Moves: 0</div>
+
+<div id="preview"></div>
+
+<script>
+// ===== Data =====
+const pairs = [
+  {letter:"A", word:"Apple", emoji:"🍎"},
+  {letter:"B", word:"Ball", emoji:"⚽"},
+  {letter:"C", word:"Cat", emoji:"🐱"},
+  {letter:"D", word:"Dog", emoji:"🐶"},
+  {letter:"E", word:"Egg", emoji:"🥚"},
+  {letter:"F", word:"Fish", emoji:"🐟"}
+];
+
+let cards=[], first=null, second=null, lock=false, moves=0;
+
+// ===== Audio (simple beep) =====
+let ctx;
+function unlockAudio(){
+  ctx=new (window.AudioContext||window.webkitAudioContext)();
+}
+function beep(f=500,d=80){
+  if(!ctx) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.frequency.value=f;
+  o.start();
+  g.gain.setValueAtTime(0.1,ctx.currentTime);
+  o.stop(ctx.currentTime+d/1000);
+}
+
+// ===== Init =====
+function initGame(){
+  unlockAudio();
+
+  cards=[];
+  pairs.forEach(p=>{
+    cards.push({...p,type:"letter",value:p.letter});
+    cards.push({...p,type:"emoji",value:p.emoji});
+  });
+
+  cards.sort(()=>Math.random()-0.5);
+  first=second=null; lock=false; moves=0;
+
+  render();
+  updateStatus();
+  renderPreview();
+}
+
+// ===== Render =====
+function render(){
+  const grid=document.getElementById("grid");
+  grid.innerHTML="";
+
+  cards.forEach((c,i)=>{
+    const card=document.createElement("div");
+    card.className="card"+(c.open?" open":"")+(c.matched?" matched":"");
+
+    const inner=document.createElement("div");
+    inner.className="inner";
+
+    const front=document.createElement("div");
+    front.className="face front";
+    front.innerText="❓";
+
+    const back=document.createElement("div");
+    back.className="face back";
+    back.innerText=c.value;
+
+    inner.appendChild(front);
+    inner.appendChild(back);
+    card.appendChild(inner);
+
+    card.onclick=()=>flip(i);
+    grid.appendChild(card);
+  });
+}
+
+// ===== Flip =====
+function flip(i){
+  if(lock) return;
+  const c=cards[i];
+  if(c.open||c.matched) return;
+
+  c.open=true;
+  speak(c.word);
+  beep(700,50);
+
+  if(!first){
+    first=i;
+  }else{
+    second=i;
+    lock=true;
+    moves++;
+    checkMatch();
+  }
+
+  render();
+  updateStatus();
+}
+
+// ===== Check =====
+function checkMatch(){
+  const c1=cards[first];
+  const c2=cards[second];
+
+  if(c1.letter===c2.letter && c1.type!==c2.type){
+    c1.matched=true;
+    c2.matched=true;
+    beep(900,100);
+    resetTurn();
+    checkWin();
+  }else{
+    beep(200,150);
+    setTimeout(()=>{
+      c1.open=false;
+      c2.open=false;
+      resetTurn();
+      render();
+    },700);
+  }
+}
+
+// ===== Win =====
+function checkWin(){
+  if(cards.every(c=>c.matched)){
+    setTimeout(()=>{
+      speak("You win!");
+      alert("🎉 เก่งมาก!");
+    },200);
+  }
+}
+
+// ===== Utils =====
+function resetTurn(){
+  first=second=null;
+  lock=false;
+}
+
+function updateStatus(){
+  document.getElementById("status").innerText="Moves: "+moves;
+}
+
+// ===== TTS =====
+function speak(text){
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="en-US";
+  u.rate=0.9;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+// ===== Preview =====
+function renderPreview(){
+  const p=document.getElementById("preview");
+  p.innerHTML="";
+  pairs.forEach(x=>{
+    const div=document.createElement("div");
+    div.className="preview-item";
+    div.innerText = `${x.letter} = ${x.word} ${x.emoji}`;
+    div.onclick=()=>speak(x.word);
+    p.appendChild(div);
+  });
+}
+
+function togglePreview(){
+  const p=document.getElementById("preview");
+  p.style.display = (p.style.display==="none")?"block":"none";
+}
+
+// Init
+initGame();
+
+</script>
+
+</body>
+</html>
